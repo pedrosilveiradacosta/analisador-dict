@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analisador DICT — Kiwify Risk</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --border2: #3a3a3a;
+    --text: #e8e8e8;
+    --muted: #888;
+    --faint: #444;
+    --green: #22c55e;
+    --green-bg: #052010;
+    --green-border: #14532d;
+    --red: #ef4444;
+    --red-bg: #1c0505;
+    --red-border: #7f1d1d;
+    --amber: #f59e0b;
+    --amber-bg: #1c1005;
+    --blue: #60a5fa;
+    --accent: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .logo-text { font-size: 13px; font-weight: 500; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+  .logo-title { font-size: 15px; font-weight: 600; color: var(--text); }
+
+  main { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .input-section { margin-bottom: 32px; }
+  .label {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 10px; display: block;
+  }
+  textarea {
+    width: 100%;
+    height: 200px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 16px;
+    resize: vertical;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--border2); }
+  textarea::placeholder { color: var(--faint); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+  button {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    border: none; border-radius: 5px;
+    cursor: pointer; transition: all 0.15s;
+    padding: 10px 20px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-primary:hover { background: #16a34a; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+  .btn-secondary:hover { color: var(--text); border-color: var(--faint); }
+
+  .error-msg {
+    background: var(--red-bg);
+    border: 1px solid var(--red-border);
+    color: var(--red);
+    border-radius: 5px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  #resultado { display: none; }
+
+  .doc-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .doc-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .doc-value { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; color: var(--text); }
+
+  .veredito {
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 32px;
+    display: flex; align-items: center; gap: 16px;
+    border: 1px solid;
+  }
+  .veredito.reprovado { background: var(--red-bg); border-color: var(--red-border); }
+  .veredito.aprovado  { background: var(--green-bg); border-color: var(--green-border); }
+  .veredito-icon { font-size: 22px; flex-shrink: 0; }
+  .veredito-main { flex: 1; }
+  .veredito-status { font-size: 18px; font-weight: 600; }
+  .veredito.reprovado .veredito-status { color: var(--red); }
+  .veredito.aprovado  .veredito-status { color: var(--green); }
+  .veredito-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .section-title {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .checks-block { margin-bottom: 32px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    padding: 8px 12px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface); }
+  tbody td { padding: 11px 12px; vertical-align: middle; }
+
+  .janela-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    padding: 2px 7px; border-radius: 3px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .formula-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--muted);
+  }
+  .pct-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; font-weight: 500;
+  }
+  .pct-cell.over { color: var(--red); }
+  .pct-cell.under { color: var(--text); }
+  .limite-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--muted);
+  }
+
+  .badge-result {
+    font-size: 11px; font-weight: 500;
+    padding: 3px 9px; border-radius: 3px;
+    white-space: nowrap;
+  }
+  .badge-result.fail { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge-result.pass { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+
+  .context-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 32px;
+  }
+  .context-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .context-card .c-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .context-card .c-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; color: var(--text);
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  @media (max-width: 600px) {
+    main { padding: 24px 16px 60px; }
+    .context-grid { grid-template-columns: 1fr; }
+    table { font-size: 12px; }
+    thead th, tbody td { padding: 8px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-dot"></div>
+  <div>
+    <div class="logo-text">Kiwify Risk</div>
+    <div class="logo-title">Analisador DICT</div>
+  </div>
+</header>
+
+<main>
+  <div class="input-section">
+    <span class="label">Cole o JSON retornado pelo DICT</span>
+    <textarea id="json-input" placeholder='{ "document": "...", "user_statistics": { "spi": { ... }, "fraud_markers": { ... }, "infraction_notifications": { ... } } }'></textarea>
+    <div id="error-msg" class="error-msg"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="analisar()">Analisar</button>
+      <button class="btn-secondary" onclick="limpar()">Limpar</button>
+    </div>
+  </div>
+
+  <div id="resultado"></div>
+</main>
+
+<script>
+function limpar() {
+  document.getElementById('json-input').value = '';
+  document.getElementById('resultado').style.display = 'none';
+  document.getElementById('resultado').innerHTML = '';
+  document.getElementById('error-msg').style.display = 'none';
+}
+
+function analisar() {
+  const raw = document.getElementById('json-input').value.trim();
+  const errEl = document.getElementById('error-msg');
+  const resEl = document.getElementById('resultado');
+  errEl.style.display = 'none';
+  resEl.style.display = 'none';
+  resEl.innerHTML = '';
+
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(e) {
+    errEl.textContent = 'JSON inválido. Verifique o conteúdo colado e tente novamente.';
+    errEl.style.display = 'block'; return;
+  }
+
+  const stats = data.user_statistics;
+  if (!stats) {
+    errEl.textContent = 'Campo "user_statistics" não encontrado no JSON.';
+    errEl.style.display = 'block'; return;
+  }
+
+  const doc = data.document || '—';
+  const spi = stats.spi?.transactions || {};
+  const fm  = stats.fraud_markers || {};
+  const inf = stats.infraction_notifications || {};
+
+  const spiD90 = spi.d90 || 0, spiM12 = spi.m12 || 0, spiM60 = spi.m60 || 0;
+
+  function sumFM(p) {
+    return (fm.fraudster_account?.[p]||0)+(fm.money_mule?.[p]||0)+(fm.identity_fraud?.[p]||0)+(fm.unknown_fraud?.[p]||0)+(fm.other?.[p]||0);
+  }
+  const fmD90=sumFM('d90'), fmM12=sumFM('m12'), fmM60=sumFM('m60');
+  const openN=inf.open_notifications||0, openP=inf.open_psp_notifications||0;
+  const rejD90=inf.rejected_notifications?.d90||0, rejM12=inf.rejected_notifications?.m12||0;
+
+  function pct(num,den){ return den>0 ? (num/den)*100 : (num>0?Infinity:0); }
+  function fmt(v){ if(!isFinite(v)) return '∞%'; return v.toFixed(4)+'%'; }
+
+  const checks = [
+    {
+      group: 'Marcadores de fraude',
+      janela: 'd90',
+      numerador: fmD90,
+      denominador: spiD90,
+      formula: `${fmD90} / ${spiD90}`,
+      pct: pct(fmD90,spiD90),
+      limite: 0.03,
+      limiteLabel: '0,03%'
+    },
+    {
+      group: 'Marcadores de fraude',
+      janela: 'm12',
+      numerador: fmM12,
+      denominador: spiM12,
+      formula: `${fmM12} / ${spiM12}`,
+      pct: pct(fmM12,spiM12),
+      limite: 0.03,
+      limiteLabel: '0,03%'
+    },
+    {
+      group: 'Marcadores de fraude',
+      janela: 'm60',
+      numerador: fmM60,
+      denominador: spiM60,
+      formula: `${fmM60} / ${spiM60}`,
+      pct: pct(fmM60,spiM60),
+      limite: 0.03,
+      limiteLabel: '0,03%'
+    },
+    {
+      group: 'Notificações de infração',
+      janela: 'd90',
+      numerador: openN+openP+rejD90,
+      denominador: spiD90,
+      formula: `(${openN} + ${openP} + ${rejD90}) / ${spiD90}`,
+      pct: pct(openN+openP+rejD90,spiD90),
+      limite: 2,
+      limiteLabel: '2%'
+    },
+    {
+      group: 'Notificações de infração',
+      janela: 'm12',
+      numerador: rejM12,
+      denominador: spiM12,
+      formula: `${rejM12} / ${spiM12}`,
+      pct: pct(rejM12,spiM12),
+      limite: 2,
+      limiteLabel: '2%'
+    }
+  ];
+
+  const falhas = checks.filter(c => c.pct >= c.limite);
+  const reprovado = falhas.length > 0;
+
+  // ---- grupos ----
+  const grupos = ['Marcadores de fraude','Notificações de infração'];
+
+  let tablesHtml = '';
+  for (const grupo of grupos) {
+    const rows = checks.filter(c => c.group === grupo);
+    const rowsHtml = rows.map(c => {
+      const fail = c.pct >= c.limite;
+      return `<tr>
+        <td><span class="janela-badge">${c.janela}</span></td>
+        <td class="formula-cell">${c.formula}</td>
+        <td class="pct-cell ${fail?'over':'under'}">${fmt(c.pct)}</td>
+        <td class="limite-cell">≥ ${c.limiteLabel}</td>
+        <td><span class="badge-result ${fail?'fail':'pass'}">${fail?'Reprova':'Passa'}</span></td>
+      </tr>`;
+    }).join('');
+
+    tablesHtml += `
+    <div class="checks-block">
+      <div class="section-title">${grupo}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Janela</th>
+            <th>Cálculo</th>
+            <th>Proporção</th>
+            <th>Limite</th>
+            <th>Resultado</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+  }
+
+  // ---- contexto ----
+  const pspsD90 = fm.fraud_different_psps?.d90||0;
+  const pspsM12 = fm.fraud_different_psps?.m12||0;
+  const pspsM60 = fm.fraud_different_psps?.m60||0;
+  const spifrD90 = fm.total_spi_fraud?.d90||0;
+  const spifrM12 = fm.total_spi_fraud?.m12||0;
+  const spifrM60 = fm.total_spi_fraud?.m60||0;
+
+  const contextHtml = `
+  <div class="section-title" style="margin-bottom:12px">Contexto — fora da régua</div>
+  <div class="context-grid">
+    <div class="context-card">
+      <div class="c-label">PSPs distintos com fraude (d90 / m12 / m60)</div>
+      <div class="c-val">${pspsD90} / ${pspsM12} / ${pspsM60}</div>
+    </div>
+    <div class="context-card">
+      <div class="c-label">Valor SPI em fraude R$ (d90 / m12 / m60)</div>
+      <div class="c-val">${spifrD90.toLocaleString('pt-BR')} / ${spifrM12.toLocaleString('pt-BR')} / ${spifrM60.toLocaleString('pt-BR')}</div>
+    </div>
+    <div class="context-card">
+      <div class="c-label">SPI transactions (d90 / m12 / m60)</div>
+      <div class="c-val">${spiD90.toLocaleString('pt-BR')} / ${spiM12.toLocaleString('pt-BR')} / ${spiM60.toLocaleString('pt-BR')}</div>
+    </div>
+    <div class="context-card">
+      <div class="c-label">Notificações abertas / open PSP</div>
+      <div class="c-val">${openN} / ${openP}</div>
+    </div>
+  </div>`;
+
+  const vIcon = reprovado ? '✕' : '✓';
+  const vClass = reprovado ? 'reprovado' : 'aprovado';
+  const vStatus = reprovado ? 'REPROVADO' : 'APROVADO';
+  const vSub = reprovado
+    ? `${falhas.length} verificação(ões) falharam — onboarding bloqueado automaticamente`
+    : 'Todas as 5 verificações passaram — onboarding liberado';
+
+  resEl.innerHTML = `
+    <div class="doc-row">
+      <span class="doc-label">Documento</span>
+      <span class="doc-value">${doc}</span>
+    </div>
+
+    <div class="veredito ${vClass}">
+      <div class="veredito-icon">${vIcon}</div>
+      <div class="veredito-main">
+        <div class="veredito-status">${vStatus}</div>
+        <div class="veredito-sub">${vSub}</div>
+      </div>
+    </div>
+
+    ${tablesHtml}
+    <hr class="divider">
+    ${contextHtml}
+  `;
+
+  resEl.style.display = 'block';
+  resEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>
